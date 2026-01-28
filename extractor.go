@@ -11,6 +11,7 @@ import (
 
 	"github.com/klauspost/compress/zip"
 	"github.com/ybirader/pzip/pool"
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 type extractor struct {
@@ -85,7 +86,11 @@ func (e *extractor) Close() error {
 }
 
 func (e *extractor) extractFile(file *zip.File) (err error) {
-	outputPath := e.outputPath(file.Name)
+	outputPath, err := e.outputPath(file.Name)
+	if err != nil {
+	    return fmt.Errorf("invalid path %q: %w", file.Name, err)
+	 }
+
 
 	dir := filepath.Dir(outputPath)
 	if err = os.MkdirAll(dir, 0755); err != nil {
@@ -151,6 +156,8 @@ func (e *extractor) isDir(name string) bool {
 	return strings.HasSuffix(filepath.ToSlash(name), "/")
 }
 
-func (e *extractor) outputPath(name string) string {
-	return filepath.Join(e.outputDir, name)
+func (e *extractor) outputPath(name string) (string, error) {
+    name = strings.TrimLeft(filepath.ToSlash(name), "/")
+    return securejoin.SecureJoin(e.outputDir, name)
 }
+
